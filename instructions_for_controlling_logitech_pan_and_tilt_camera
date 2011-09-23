@@ -1,0 +1,121 @@
+to install logitech orbit cam stuff
+
+
+http://www.quickcamteam.net/documentation/how-to/how-to-install-the-webcam-tools
+
+sudo aptitude install subversion cmake build-essential libxml2-dev pkg-config gengetopt
+
+svn co http://svn.quickcamteam.net/svn/qct/webcam-tools/trunk
+
+follow the instructions.  On my machine, the path turned out to be:
+/usr/src/linux-source-2.6.32/drivers/media/video/uvc
+
+
+
+usage of uvcdynctrl:
+http://forums.quickcamteam.net/showthread.php?tid=212
+
+
+
+next make a directory, 
+cameraControl
+and download the code from github
+you will have to set the ROS_PACKAGE_PATH to find it
+
+do the ususal rosmake stuff
+
+run it when you have the skype capture program running and it will drive the camera
+
+Right now it drives the camera attached to video0
+we can change that, but I am too sleepy to do it right now!
+
+
+
+
+
+
+
+
+
+results:
+
+no camera plugged in:
+
+dbarry@pad:~/logitech_camera_control/webcam-tools/build$ uvcdynctrl -l
+Listing available devices:
+  video1   WebcamStudio Video Device
+  
+  
+orbitcam plugged in:
+    
+dbarry@pad:~/logitech_camera_control/webcam-tools/build$ uvcdynctrl -l
+[libwebcam] Unknown V4L2 private control ID encountered: 0x0A046D03 (V4L2_CID_PRIVATE_BASE + 33844483)
+[libwebcam] Unknown V4L2 private control ID encountered: 0x0A046D04 (V4L2_CID_PRIVATE_BASE + 33844484)
+Listing available devices:
+  video1   WebcamStudio Video Device
+  video0   UVC Camera (046d:0994)
+
+http://forums.quickcamteam.net/showthread.php?tid=291
+
+$ mv ./ubuntu/media/usbvideo/uvcvideo.ko ./ubuntu/media/usbvideo/__uvc__video.k__o
+$ rmmod uvcvideo
+$ depmod
+$ modprobe uvcvideo
+$ modinfo uvcvideo
+filename: /lib/modules/2.6.24-16-generic/usb/media/uvcvideo.ko
+
+
+
+
+forums:
+http://forums.quickcamteam.net/forumdisplay.php?fid=7%22%3EQuickCam%20Team%20discussion%20forums
+
+
+
+OPTIONAL:
+get luvcview:
+svn co http://svn.quickcamteam.net/svn/luvcview
+
+To compile luvcviewer, note that the README file has instructions, but it is somewhat out of date, so do this:
+sudo apt-get install libsdl1.2-dev libsdl1.2debian  (was already present in my build)
+
+find the following include files and copy then to the luvcviewer directory:
+uvcvideo.h
+dynctrl-logitech.h
+
+on my system:
+usr/src/linux-source-2.6.32/drivers/media/video/uvc/uvcvideo.h
+/home/dbarry/logitech_camera_control/webcam-tools/common/include/dynctrl-logitech.h
+
+in uvcvideo.h, around line 59, replace
+
+struct uvc_xu_control {
+    __u8 unit;
+    __u8 selector;
+    __u16 size;
+    __u8 __user *data;
+};
+
+with:
+struct uvc_xu_control {
+    __u8 unit;
+    __u8 selector;
+    __u16 size;
+//    __u8 __user *data;  <<<<<< remove __user:
+    __u8 *data;
+};
+
+then run
+make
+
+then 
+sudo make install
+which returned this:
+install -s -m 755 -g root -o root luvcview /usr/local/bin 
+rm -f /usr/local/bin/uvcview
+
+run it:
+./luvcview
+
+nice!
+Now you have a nice interface for controlling all the camera functions
