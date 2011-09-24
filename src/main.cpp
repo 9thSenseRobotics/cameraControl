@@ -105,11 +105,13 @@ White Balance Temperature, Auto
 #define MAX_TILT 1920
 #define DELTA_TILT 320  // corresponds to 5 degrees down, range is +- 30 degrees
 
-#define FIRST_VIDEO_DEVICE "/dev/video0"
+#define FIRST_VIDEO_DEVICE "/dev/video1"
 #define SECOND_VIDEO_DEVICE "/dev/video2"
 #define SYMBOLIC_VIDEO_DEVICE "/dev/video9"
+#define CAMERA_CHANGE_STRING "cam"
+#define CAMERA_CHANGE_STRING_CAP "Cam"
 
-std::string baseMsg, cmdMsg, currentVideoDeviceMsg, cmdCameraChange, cmdCameraChangeCap;
+std::string baseMsg, cmdMsg, currentVideoDeviceMsg;
 bool usingFirstVideoDevice;
 int numSteps;
 
@@ -118,10 +120,10 @@ void pan(int panDelta)
    std::stringstream distance;
    cmdMsg = currentVideoDeviceMsg;
    distance << panDelta;
-   cmdMsg.append("uvcdynctrl -s \"Pan (relative)\" -- ");
+   cmdMsg.append(" -s \"Pan (relative)\" -- ");
    cmdMsg.append(distance.str());
    system(cmdMsg.c_str());
-   //std::cout << cmdMsg.c_str() << std::endl;
+   ROS_INFO("%s", cmdMsg.c_str());
  
    
    /*
@@ -143,7 +145,7 @@ void tilt(int tiltDelta)
    cmdMsg.append(" -s \"Tilt (relative)\" -- ");
    cmdMsg.append(distance.str());
    system(cmdMsg.c_str()); 
-   //std::cout << cmdMsg.c_str() << std::endl;
+   ROS_INFO("%s", cmdMsg.c_str());
 }
 
 void skypeCallback( const std_msgs::String& msgSkype)
@@ -151,8 +153,9 @@ void skypeCallback( const std_msgs::String& msgSkype)
     std_msgs::String ReceivedCommands = msgSkype;
     numSteps = strlen( (const char* ) msgSkype.data.c_str());
     std::string skypeString = msgSkype.data.c_str();
+    ROS_INFO("%s", skypeString.c_str());
     if ( numSteps > 7 ) return;  // invalid format, more than 6 characters
-    if (skypeString.compare(cmdCameraChange) != 0 || skypeString.compare(cmdCameraChangeCap) != 0)  // swap cameras
+    if (skypeString.compare(CAMERA_CHANGE_STRING) == 0 || skypeString.compare(CAMERA_CHANGE_STRING_CAP) == 0)  // swap cameras, both video and pan tilt
     {
     	 currentVideoDeviceMsg = baseMsg;
     	 if (usingFirstVideoDevice)
@@ -165,6 +168,7 @@ void skypeCallback( const std_msgs::String& msgSkype)
     	 	currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
     	 	usingFirstVideoDevice = true; 
     	 } 
+    	 ROS_INFO("%s", "pan tilt camera change");
     	 return;
     }  	 	
     	 	
@@ -248,25 +252,39 @@ void skypeCallback( const std_msgs::String& msgSkype)
     
       case 'M':  //max down tilt   
         tilt(MAX_TILT * 2);
-        break; 
-        
-      case '0': // use symbolic video device (video9)
-      	currentVideoDeviceMsg = baseMsg;
-      	currentVideoDeviceMsg.append(SYMBOLIC_VIDEO_DEVICE);
-    	usingFirstVideoDevice = false;
-      	break;
+        break;  
       	
-      case '1':  // use first video device
+      case '0': // swap video device, using different command than used to swap both video and pan tilt, this is pan tilt only
       	currentVideoDeviceMsg = baseMsg;
-      	currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
-    	usingFirstVideoDevice = true;
-      	break;
+      	if (usingFirstVideoDevice)
+      	{
+      		currentVideoDeviceMsg.append(SECOND_VIDEO_DEVICE);
+    		usingFirstVideoDevice = false;
+    	}
+    	else
+    	{
+    		currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
+    		usingFirstVideoDevice = true;
+    	}
+    	break;
+    	
+    	case '1':  // use first video device
+      		currentVideoDeviceMsg = baseMsg;
+      		currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
+    		usingFirstVideoDevice = true;
+      		break;
       	
-      case '2': // use second video device
-      	currentVideoDeviceMsg = baseMsg;
-      	currentVideoDeviceMsg.append(SECOND_VIDEO_DEVICE);
-    	usingFirstVideoDevice = false;
-      	break;  
+      	case '2': // use second video device
+      		currentVideoDeviceMsg = baseMsg;
+      		currentVideoDeviceMsg.append(SECOND_VIDEO_DEVICE);
+    		usingFirstVideoDevice = false;
+      		break;
+      		
+      	case '9': // use symbolic video device (video9)
+      		currentVideoDeviceMsg = baseMsg;
+      		currentVideoDeviceMsg.append(SYMBOLIC_VIDEO_DEVICE);
+    		usingFirstVideoDevice = false;
+      		break; 
       	
       default:  // unknown command
       	break;
@@ -280,9 +298,7 @@ int main(int argc, char **argv)
  ros::NodeHandle nh;
  ros::Subscriber subscriberSkype = nh.subscribe("SkypeChat", 1000, skypeCallback);  
  ros::Rate loop_rate(50);
- 
- cmdCameraChange ="camera";
- cmdCameraChangeCap = "Camera";
+
  baseMsg = "uvcdynctrl -d ";
  currentVideoDeviceMsg = baseMsg;
  currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
