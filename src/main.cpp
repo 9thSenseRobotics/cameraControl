@@ -107,7 +107,6 @@ White Balance Temperature, Auto
 
 #define FIRST_VIDEO_DEVICE "/dev/video1"
 #define SECOND_VIDEO_DEVICE "/dev/video0"
-#define SYMBOLIC_VIDEO_DEVICE "/dev/video9"
 #define CAMERA_CHANGE_STRING "cam"
 #define CAMERA_CHANGE_STRING_CAP "Cam"
 
@@ -280,12 +279,7 @@ void skypeCallback( const std_msgs::String& msgSkype)
     		usingFirstVideoDevice = false;
       		break;
       		
-      	case '9': // use symbolic video device (video9)
-      		currentVideoDeviceMsg = baseMsg;
-      		currentVideoDeviceMsg.append(SYMBOLIC_VIDEO_DEVICE);
-    		usingFirstVideoDevice = false;
-      		break; 
-      	
+     	
       default:  // unknown command
       	break;
     }
