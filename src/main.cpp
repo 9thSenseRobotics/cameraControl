@@ -105,8 +105,8 @@ White Balance Temperature, Auto
 #define MAX_TILT 1920
 #define DELTA_TILT 320  // corresponds to 5 degrees down, range is +- 30 degrees
 
-#define FIRST_VIDEO_DEVICE "/dev/video0"
-#define SECOND_VIDEO_DEVICE "/dev/video1"
+#define FIRST_VIDEO_DEVICE "/dev/video1"
+#define SECOND_VIDEO_DEVICE "/dev/video0"
 #define SYMBOLIC_VIDEO_DEVICE "/dev/video9"
 #define CAMERA_CHANGE_STRING "cam"
 #define CAMERA_CHANGE_STRING_CAP "Cam"
