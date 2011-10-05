@@ -105,14 +105,14 @@ White Balance Temperature, Auto
 #define MAX_TILT 1920
 #define DELTA_TILT 320  // corresponds to 5 degrees down, range is +- 30 degrees
 
-#define FIRST_VIDEO_DEVICE "/dev/video2"
-#define SECOND_VIDEO_DEVICE "/dev/video1"
 #define CAMERA_CHANGE_STRING "cam"
 #define CAMERA_CHANGE_STRING_CAP "Cam"
 
 std::string baseMsg, cmdMsg, currentVideoDeviceMsg;
+std::string pan_tilt_camera_device, lower_camera_device;	// ros parameters that define which cameras to use
 bool usingFirstVideoDevice;
 int numSteps;
+
 
 void pan(int panDelta)
 {
@@ -153,106 +153,87 @@ void skypeCallback( const std_msgs::String& msgSkype)
     numSteps = strlen( (const char* ) msgSkype.data.c_str());
     std::string skypeString = msgSkype.data.c_str();
     ROS_INFO("%s", skypeString.c_str());
-    if ( numSteps > 7 ) return;  // invalid format, more than 6 characters
+    if ( numSteps > 10 ) numSteps = 2;  // probably a mistake, just move a little
+    else if ( numSteps > 5 ) numSteps = 5;
+    
     if (skypeString.compare(CAMERA_CHANGE_STRING) == 0 || skypeString.compare(CAMERA_CHANGE_STRING_CAP) == 0)  // swap cameras, both video and pan tilt
     {
     	 currentVideoDeviceMsg = baseMsg;
     	 if (usingFirstVideoDevice)
     	 {
-    	 	currentVideoDeviceMsg.append(SECOND_VIDEO_DEVICE);
+    	 	currentVideoDeviceMsg.append(lower_camera_device);
     	 	usingFirstVideoDevice = false;
     	 }
     	 else
     	 {
-    	 	currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
+    	 	currentVideoDeviceMsg.append(pan_tilt_camera_device);
     	 	usingFirstVideoDevice = true; 
     	 } 
     	 ROS_INFO("%s", "pan tilt camera change");
     	 return;
-    }  	 	
+    }  	
     	 	
     for (int i = 1; i < numSteps; i++) if ( (msgSkype.data[i] != msgSkype.data[0]) && msgSkype.data[i] != msgSkype.data[0] + 32 ) return; 
           // if string is not all identical characters, allowing for first character to be a capital, return    
+          
+    if (!usingFirstVideoDevice) 
+    {
+    	ROS_INFO("%s", "pan tilt command received when not looking through a pan tilt camera!");
+    	return;
+    }
+    
     char cmd = msgSkype.data[0];  
     switch(cmd)
     {
             
      case 'u':  // tilt up
+     case 'U':
         tilt(-numSteps * DELTA_TILT);
         break;
-
-     case 'U': // tilt up
-        tilt(-numSteps * DELTA_TILT); 
-        break;  
   
       case 'n':  // tilt down
+      case 'N':  // tilt down
         tilt(numSteps * DELTA_TILT); 
         break;
-
-      case 'N':  // tilt down
-        tilt(numSteps * DELTA_TILT);
-        break; 
         
       case 'b':  // center tilt
-      	cmdMsg = currentVideoDeviceMsg;
-      	cmdMsg.append(" -s \"Pan/tilt Reset\" -- 2");
-      	system(cmdMsg.c_str());
-      	break;
-      	
-      case 'B':  // center tilt
+      case 'B':
       	cmdMsg = currentVideoDeviceMsg;
       	cmdMsg.append(" -s \"Pan/tilt Reset\" -- 2");
       	system(cmdMsg.c_str());
       	break;
    
       case 'k': // pan right
+      case 'K':
         pan(-numSteps * DELTA_PAN);
         break;
-     
-      case 'K': // pan right
-        pan(-numSteps * DELTA_PAN);
-        break; 
  
       case 'h': // pan left
+      case 'H':
         pan(numSteps * DELTA_PAN);
         break;
         
-      case 'H': // pan left
-        pan(numSteps * DELTA_PAN);
-        break; 
-        
       case 'g': // center pan
+      case 'G':
       	cmdMsg = currentVideoDeviceMsg;
       	cmdMsg.append(" -s \"Pan/tilt Reset\" -- 1");
       	system(cmdMsg.c_str());
       	break;
-      	
-       case 'G': // center pan
-      	cmdMsg = currentVideoDeviceMsg;
-      	cmdMsg.append(" -s \"Pan/tilt Reset\" -- 1");
-      	system(cmdMsg.c_str());
-      	break;     	
-        
+  	       
       case 'j': //center all
-      	cmdMsg = currentVideoDeviceMsg;
-      	cmdMsg.append(" -s \"Pan/tilt Reset\" -- 3");
-      	system(cmdMsg.c_str());
-        break;
-  
-      case 'J': //center all
+      case 'J':
       	cmdMsg = currentVideoDeviceMsg;
       	cmdMsg.append(" -s \"Pan/tilt Reset\" -- 3");
       	system(cmdMsg.c_str());
         break;
     
-      case 'm':  //max down tilt   
+      case 'm':  //max down tilt 
+      case 'M':  
         tilt(MAX_TILT * 2);  // could be as high as max tilt up, so need to go down twice the range.
         break;
-    
-      case 'M':  //max down tilt   
-        tilt(MAX_TILT * 2);
-        break;  
       	
+      /*  we no longer have a lower pan/tilt
+      
       case '0': // swap video device, using different command than used to swap both video and pan tilt, this is pan tilt only
       	currentVideoDeviceMsg = baseMsg;
       	if (usingFirstVideoDevice)
@@ -279,7 +260,7 @@ void skypeCallback( const std_msgs::String& msgSkype)
     		usingFirstVideoDevice = false;
       		break;
       		
-     	
+     	*/
       default:  // unknown command
       	break;
     }
@@ -289,13 +270,20 @@ void skypeCallback( const std_msgs::String& msgSkype)
 int main(int argc, char **argv)
 {
  ros::init(argc, argv, "cameraControl");
- ros::NodeHandle nh;
+ ros::NodeHandle nh; 
  ros::Subscriber subscriberSkype = nh.subscribe("SkypeChat", 1000, skypeCallback);  
  ros::Rate loop_rate(50);
 
+ //look for the parameter in the parameter server
+ //if exists assign the current value
+ //otherwise assign the default value ("defualt" in this case)
+ //recall that this line won't add the parameter on the parameter server
+ nh.param<std::string>("pan_tilt_camera", pan_tilt_camera_device, "/dev/video2");
+ nh.param<std::string>("lower_camera", lower_camera_device, "/dev/video1");
+
  baseMsg = "uvcdynctrl -d ";
  currentVideoDeviceMsg = baseMsg;
- currentVideoDeviceMsg.append(FIRST_VIDEO_DEVICE);
+ currentVideoDeviceMsg.append(pan_tilt_camera_device);
  usingFirstVideoDevice = true;
  
  while (ros::ok())
