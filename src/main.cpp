@@ -278,8 +278,8 @@ int main(int argc, char **argv)
  //if exists assign the current value
  //otherwise assign the default value ("defualt" in this case)
  //recall that this line won't add the parameter on the parameter server
- nh.param<std::string>("pan_tilt_camera", pan_tilt_camera_device, "/dev/video2");
- nh.param<std::string>("lower_camera", lower_camera_device, "/dev/video1");
+ nh.param<std::string>("pan_tilt_camera", pan_tilt_camera_device, "/dev/video1");
+ nh.param<std::string>("lower_camera", lower_camera_device, "/dev/video2");
 
  baseMsg = "uvcdynctrl -d ";
  currentVideoDeviceMsg = baseMsg;
